@@ -4,7 +4,7 @@ const bodyParser = require('body-parser')
 const cors = require('cors')
 const Sequelize = require('sequelize')
 
-const databaseUrl = 'postgres://postgres:password@localhost:5430/postgres'
+const databaseUrl = process.env.DATABASE_URL || 'postgres://postgres:password@localhost:5430/postgres'
 const db = new Sequelize(databaseUrl)
 
 db
