@@ -19,6 +19,16 @@ const Message = db.define(
   }
 )
 
+const Channel = db.define(
+  'channel',
+  {
+    name: Sequelize.STRING
+  }
+)
+
+Message.belongsTo(Channel)
+Channel.hasMany(Message)
+
 const stream = new Sse()
 
 const app = express()
@@ -32,9 +42,10 @@ app.use(jsonParser)
 app.get(
   '/stream',
   async (request, response) => {
-    const messages = await Message.findAll()
+    const channels = await Channel
+      .findAll({ include: [Message] })
 
-    const data = JSON.stringify(messages)
+    const data = JSON.stringify(channels)
     stream.updateInit(data)
 
     stream.init(request, response)
@@ -44,21 +55,46 @@ app.get(
 app.post(
   '/message',
   async (request, response) => {
-    const { message, user } = request.body
+    const {
+      message,
+      user,
+      channelId
+    } = request.body
 
     const entity = await Message.create({
       text: message,
-      user
+      user,
+      channelId
     })
 
-    const messages = await Message.findAll()
+    const channels = await Channel.findAll({
+      include: [Message]
+    })
 
-    const data = JSON.stringify(messages)
+    const data = JSON.stringify(channels)
 
     stream.updateInit(data)
     stream.send(data)
 
     response.send(entity)
+  }
+)
+
+app.post(
+  '/channel',
+  async (request, response) => {
+    const channel = await Channel.create(request.body)
+
+    const channels = await Channel.findAll({
+      include: [Message]
+    })
+
+    const data = JSON.stringify(channels)
+
+    stream.updateInit(data)
+    stream.send(data)
+
+    response.send(channel)
   }
 )
 
