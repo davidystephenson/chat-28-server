@@ -1,29 +1,60 @@
 const express = require('express')
 const Sse = require('json-sse')
 const bodyParser = require('body-parser')
+const cors = require('cors')
+const Sequelize = require('sequelize')
 
-const messages = ['hello world']
+const databaseUrl = 'postgres://postgres:password@localhost:5430/postgres'
+const db = new Sequelize(databaseUrl)
 
-const sse = new Sse(messages)
+db
+  .sync({ force: false })
+  .then(() => console.log('Database synced'))
+
+const Message = db.define(
+  'message',
+  {
+    text: Sequelize.STRING
+  }
+)
+
+const stream = new Sse()
 
 const app = express()
+
+const middleware = cors()
+app.use(middleware)
 
 const jsonParser = bodyParser.json()
 app.use(jsonParser)
 
-app.get('/stream', sse.init)
+app.get(
+  '/stream',
+  async (request, response) => {
+    const messages = await Message.findAll()
+
+    const data = JSON.stringify(messages)
+    stream.updateInit(data)
+
+    stream.init(request, response)
+  }
+)
 
 app.post(
   '/message',
-  (request, response) => {
+  async (request, response) => {
     const { message } = request.body
 
-    messages.push(message)
+    const entity = await Message.create({ text: message })
 
-    sse.updateInit(messages)
-    sse.send(message)
+    const messages = await Message.findAll()
 
-    response.send(message)
+    const data = JSON.stringify(messages)
+
+    stream.updateInit(data)
+    stream.send(data)
+
+    response.send(entity)
   }
 )
 
