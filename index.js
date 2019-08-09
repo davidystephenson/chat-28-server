@@ -55,6 +55,7 @@ app.get(
 app.post(
   '/message',
   async (request, response) => {
+    console.log('request.body test:', request.body)
     const {
       message,
       user,
@@ -66,6 +67,8 @@ app.post(
       user,
       channelId
     })
+
+    console.log('entity test:', entity)
 
     const channels = await Channel.findAll({
       include: [Message]
